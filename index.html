@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>mecatrobot · Learn robotics with interactive 3D models</title>
+    <meta name="description" content="mecatrobot is an interactive learning platform for robotics by Mecatro Club: 3D robots you can move, kinematic diagrams, DH tables and step-by-step courses, in English and Arabic." />
+    <meta property="og:title" content="mecatrobot · Mecatro Club" />
+    <meta property="og:description" content="Learn robotics by moving it: interactive 3D robots, diagrams and courses." />
+    <meta property="og:image" content="assets/logo-stacked.png" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="home.css" />
+    <script type="importmap">
+      { "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }
+    </script>
+    <script src="helpers.js"></script>
+    <script src="dharm.js"></script>
+    <script src="nav.js" defer></script>
+  </head>
+  <body class="home">
+
+    <!-- ============ hero ============ -->
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <span class="eyebrow"><i></i><span>Interactive robotics platform</span></span>
+        <h1><span>Learn robotics</span> <em>by moving it.</em></h1>
+        <p class="lead">Eight kinds of robot, each with a kinematic diagram, its DH table and a 3D model you control with sliders. Step-by-step courses take you from your first joint to inverse kinematics. No prior knowledge needed.</p>
+        <div class="cta">
+          <a class="btn" href="learn.html"><span>Start learning</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <a class="btn ghost" href="#robots">Explore the robots</a>
+        </div>
+        <ul class="stats">
+          <li><b>8</b><span>robots</span></li>
+          <li><b>7</b><span>courses</span></li>
+          <li><b>66</b><span>short lessons</span></li>
+          <li><b>3D</b><span>live models</span></li>
+        </ul>
+      </div>
+
+      <div class="viewer" id="viewer">
+        <canvas id="gl" aria-label="Interactive 3D robot arm" role="img"></canvas>
+        <div class="v-top"><span class="live"><i></i><span>Live 3D model</span></span><span class="hint">Drag to rotate</span></div>
+        <div class="v-ctl" id="vctl" dir="ltr">
+          <div class="vrow"><label for="q1">q1</label><input id="q1" type="range" min="-170" max="170" value="30" /><output id="o1">30°</output></div>
+          <div class="vrow"><label for="q2">q2</label><input id="q2" type="range" min="-100" max="60" value="-45" /><output id="o2">-45°</output></div>
+          <div class="vrow"><label for="q3">q3</label><input id="q3" type="range" min="-140" max="50" value="-60" /><output id="o3">-60°</output></div>
+          <button type="button" id="vauto" class="v-auto" aria-pressed="true">Auto motion</button>
+        </div>
+        <p class="nogl">Your browser cannot show 3D.</p>
+      </div>
+    </section>
+
+    <!-- ============ choose a path ============ -->
+    <section class="block" id="paths">
+      <header class="block-h"><h2>Where do you want to start?</h2><p >Pick what matches your curiosity. You can change your mind at any time.</p></header>
+      <div class="paths" id="pathCards"></div>
+    </section>
+
+    <!-- ============ robots ============ -->
+    <section class="block" id="robots">
+      <header class="block-h row">
+        <div><h2>The robots</h2><p>Each robot has its own page: a kinematic diagram, a DH table and a 3D model you move yourself.</p></div>
+        <div class="chips" id="chips" role="group"></div>
+      </header>
+      <div class="rgrid" id="rgrid"></div>
+      <details class="cmp">
+        <summary>Robots side by side</summary>
+        <div class="cmp-wrap"><table class="dh" id="cmpTable"></table></div>
+      </details>
+    </section>
+
+    <!-- ============ learning path ============ -->
+    <section class="block" id="path">
+      <header class="block-h row">
+        <div><h2>Your learning path</h2><p>Read the pages in any order. If you are new, follow this path from top to bottom and tick every page you finish. Your progress stays in your browser.</p></div>
+        <div class="progress" id="prog"></div>
+      </header>
+      <div class="phases" id="phases"></div>
+    </section>
+
+    <!-- ============ the club ============ -->
+    <section class="block club" id="club">
+      <div class="club-card">
+        <div class="club-id">
+          <img class="lg" src="assets/logo-stacked.png" width="260" height="277" loading="lazy" decoding="async" alt="Mecatro Club" />
+        </div>
+        <div class="club-body">
+          <span class="eyebrow"><i></i><span>The science club</span></span>
+          <h2>A platform made by Mecatro Club</h2>
+          <p id="clubText">Mecatro Club is the science club of the Faculty of Technology at M'hamed Bougara University of Boumerdes. mecatrobot is our open learning space for everyone curious about robotics: students, makers and beginners.</p>
+          <div class="cta">
+            <a class="btn" id="joinBtn" href="#" target="_blank" rel="noopener"></a>
+          </div>
+          <div class="club-links" id="clubLinks"></div>
+        </div>
+      </div>
+    </section>
+
+    <script type="module">
+const $ = (id) => document.getElementById(id), root = document.documentElement;
+const L = (en) => en;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ------------------------------------------------------------------ the pages: one record per page (English / Arabic)
+const LV = [['Beginner'], ['Intermediate'], ['Advanced']];
+const P = {
+  learn:  { href: 'learn.html', min: 45, lv: 1, kind: 'course', t: ['The basics'], d: ['Joints, degrees of freedom, frames and the DH table.'] },
+  maths:  { href: 'learn-maths.html', min: 90, lv: 1, kind: 'course', t: ['Maths and motion'], d: ['A 2-axis arm from zero: angles, DH and motion laws.'] },
+  arm:    { href: 'arm.html', min: 30, lv: 1, kind: 'serial', tag: 'R-R-R', t: ['3-DOF arm'], d: ['Your first kinematic diagram and DH table.'] },
+  gantry: { href: 'gantry.html', min: 15, lv: 1, kind: 'serial', tag: 'P-P-P', t: ['Cartesian gantry'], d: ['Sliding joints: the simplest kinematics.'] },
+  scara:  { href: 'scara.html', min: 30, lv: 2, kind: 'serial', tag: 'R-R-P-R', t: ['SCARA', 'SCARA'], d: ['Mixed joints and closed-form inverse kinematics.'] },
+  articulated: { href: 'articulated.html', min: 45, lv: 2, kind: 'serial', tag: '6 × R', t: ['6-axis robot'], d: ['The wrist, singularities and numerical IK.'] },
+  cobot:  { href: 'cobot.html', min: 30, lv: 2, kind: 'serial', tag: '6 × R', t: ['Cobot (UR5)'], d: ['Offset wrist, safety and a real UR5 table.'] },
+  delta:  { href: 'delta.html', min: 45, lv: 3, kind: 'parallel', tag: L('Parallel'), t: ['Delta robot'], d: ['Parallel robots and closed loops.'] },
+  mobile: { href: 'mobile.html', min: 30, lv: 2, kind: 'mobile', tag: L('2 wheels'), t: ['Mobile robot'], d: ['Wheel speeds, turning circle and odometry.'] },
+  wheels: { href: 'wheels.html', min: 40, lv: 2, kind: 'mobile', tag: L('Reference'), t: ['Wheels and drive types'], d: ['Every wheel type, four drives to try yourself.'] },
+  model:  { href: 'learn-model.html', min: 200, lv: 3, kind: 'course', t: ['Robot modelling'], d: ['Master level: DHm, forward and inverse models, Jacobian, dynamics.'] },
+  sing:   { href: 'learn-singularities.html', min: 100, lv: 3, kind: 'course', t: ['Singularities and the Jacobian'], d: ['Why a robot loses a direction, gimbal lock, and how to avoid it.'] },
+  ctrl:   { href: 'learn-control.html', min: 110, lv: 3, kind: 'course', t: ['Dynamics and control'], d: ['Torques, motors, sensors, PID, computed torque, force control.'] },
+  ai:     { href: 'learn-intelligence.html', min: 115, lv: 3, kind: 'course', t: ['Perception, planning and AI'], d: ['Vision, Kalman, SLAM, A*, RRT, behaviours, learning.'] },
+  world:  { href: 'learn-world.html', min: 115, lv: 2, kind: 'course', t: ['Robots in the real world'], d: ['Every robot family, grippers, electronics, ROS, safety, careers.'] }
+};
+const ORDER = ['learn', 'maths', 'arm', 'gantry', 'scara', 'articulated', 'cobot', 'delta', 'mobile', 'wheels', 'model', 'sing', 'ctrl', 'ai', 'world'];
+const ROBOT_IDS = ['arm', 'gantry', 'scara', 'articulated', 'cobot', 'delta', 'mobile', 'wheels'];
+const prog = () => (window.RA && RA.progress) || { get: () => false, set() {}, clear() {}, all: () => ({}) };
+const arrow = '→';
+
+// ------------------------------------------------------------------ four ways in
+const PATHS = [
+  { href: 'learn.html', ic: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M8 7h8M8 11h6"/>', t: ['I am new to robotics'], d: ['12 short lessons that build the vocabulary: joints, frames, DH tables.'], c: ['Start with the basics'] },
+  { href: 'arm.html', ic: '<circle cx="6" cy="18" r="2.5"/><circle cx="12" cy="8" r="2.5"/><circle cx="19" cy="12" r="2"/><path d="m7.5 16 3-6.2M14.4 8.8l3 2"/>', t: ['I want to play with a robot'], d: ['Open a 3D arm, move its joints and watch the diagram and the table react.'], c: ['Open the 3-DOF arm'] },
+  { href: 'learn-maths.html', ic: '<path d="M5 20V4M5 20h15"/><path d="M8 15c3 0 3-8 6-8s3 6 6 6"/>', t: ['I want the maths'], d: ['Build a 2-axis arm from zero: angles, DH, inverse kinematics and motion laws.'], c: ['Start the maths course'] },
+  { href: 'learn-world.html', ic: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.8 3.9 5.8 3.9 9s-1.3 6.2-3.9 9c-2.6-2.8-3.9-5.8-3.9-9S9.4 5.8 12 3z"/>', t: ['I am just curious'], d: ['Tour every robot family, from grippers and sensors to ROS, safety and careers.'], c: ['Explore the real world'] }
+];
+$('pathCards').innerHTML = PATHS.map((p) => `<a class="pcard" href="${p.href}"><span class="pic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p.ic}</svg></span><h3>${L(...p.t)}</h3><p>${L(...p.d)}</p><span class="go">${L(...p.c)} ${arrow}</span></a>`).join('');
+
+// ------------------------------------------------------------------ robot cards: a small kinematic sketch for each
+const C1 = '#c9ccff', HL = '#ff9f43';
+const sk = (body) => `<svg viewBox="0 0 160 90" fill="none" stroke="${C1}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const j = (x, y, r = 5) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#0f1033"/>`;
+const rollers = Array.from({ length: 8 }, (_, k) => `<rect x="76" y="14" width="8" height="15" rx="3.5" transform="rotate(${k * 45 + 22} 80 45)" stroke="${HL}"/>`).join('');
+const SK = {
+  arm: sk(`<path d="M28 80h34"/><path d="M45 80V56"/><path d="M45 56 84 30 124 42" stroke-width="3"/>${j(45, 54)}${j(84, 30)}<circle cx="124" cy="42" r="4" fill="${HL}" stroke="${HL}"/>`),
+  gantry: sk(`<rect x="24" y="22" width="112" height="54" rx="3"/><path d="M24 40h112" stroke-width="1.4" opacity=".6"/><rect x="66" y="35" width="26" height="11" rx="2" fill="#0f1033"/><path d="M79 46v22"/><rect x="72" y="66" width="14" height="6" rx="1.5" fill="${HL}" stroke="${HL}"/>`),
+  scara: sk(`<path d="M30 80h36M48 80V38"/><path d="M48 38h46l30 0" stroke-width="3"/>${j(48, 38)}${j(94, 38)}<path d="M124 38v30" stroke="${HL}"/><rect x="119" y="66" width="10" height="5" fill="${HL}" stroke="${HL}"/>`),
+  articulated: sk(`<path d="M26 80h38"/><path d="M44 80V60" /><path d="M44 60 56 30 96 22 122 44" stroke-width="3"/>${j(44, 58, 4.5)}${j(56, 30, 4.5)}${j(96, 22, 4.5)}${j(122, 44, 4)}<path d="M122 44l12 8" stroke="${HL}"/><circle cx="134" cy="52" r="3" fill="${HL}" stroke="${HL}"/>`),
+  cobot: sk(`<rect x="28" y="70" width="32" height="10" rx="3"/><path d="M44 70V58"/><path d="M44 58 64 26 112 24" stroke-width="5" opacity=".9"/>${j(44, 56, 5.5)}${j(64, 26, 5.5)}${j(112, 24, 4.5)}<path d="M112 24v22" stroke="${HL}" stroke-width="5"/><rect x="104" y="46" width="16" height="6" rx="2" fill="${HL}" stroke="${HL}"/>`),
+  delta: sk(`<path d="M28 18h104" stroke-width="3"/><path d="M44 18 58 46 76 66M116 18 102 46 84 66M80 18v28" /><rect x="64" y="66" width="32" height="7" rx="2" fill="${HL}" stroke="${HL}"/>${j(58, 46, 3.5)}${j(102, 46, 3.5)}`),
+  mobile: sk(`<rect x="46" y="26" width="64" height="40" rx="9"/><rect x="56" y="15" width="18" height="9" rx="2.5" fill="#0f1033"/><rect x="56" y="68" width="18" height="9" rx="2.5" fill="#0f1033"/><path d="M118 46h28m-7-7 7 7-7 7" stroke="${HL}"/>`),
+  wheels: sk(`<circle cx="80" cy="45" r="30"/><circle cx="80" cy="45" r="7" fill="#0f1033"/>${rollers}`)
+};
+const KIND = [['all', 'All'], ['serial', 'Serial'], ['parallel', 'Parallel'], ['mobile', 'Mobile']];
+let cur = 'all';
+const rgrid = $('rgrid'), chips = $('chips');
+function paintRobots() {
+  const pg = prog();
+  rgrid.innerHTML = ROBOT_IDS.filter((id) => cur === 'all' || P[id].kind === cur).map((id) => {
+    const r = P[id], ok = pg.get(id);
+    return `<a class="rcard${ok ? ' done' : ''}" href="${r.href}"><div class="rsk">${SK[id]}<span class="tagc">${r.tag}</span>${ok ? '<span class="tick" aria-hidden="true">✓</span>' : ''}</div><div class="rtx"><h3>${L(...r.t)}</h3><p>${L(...r.d)}</p><div class="rmeta"><span>${r.min} ${L('min')}</span><span class="lvl l${r.lv}"><b></b><b></b><b></b></span><span>${L(...LV[r.lv - 1])}</span></div></div></a>`;
+  }).join('');
+}
+chips.innerHTML = KIND.map((k) => `<button type="button" data-k="${k[0]}" aria-pressed="${k[0] === cur}">${L(k[1], k[2])}</button>`).join('');
+chips.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; cur = b.dataset.k; chips.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); paintRobots(); });
+paintRobots();
+
+// comparison table
+{
+  const H = [['Robot'], ['Joints'], ['DOF'], ['Speed'], ['Payload'], ['Workspace'], ['Typical job']];
+  const R = [
+    [['3-DOF arm'], 'R-R-R', '3', ['Medium'], ['Low'], ['Sphere-like'], ['Teaching, light handling']],
+    [['Cartesian gantry'], 'P-P-P', '3', ['Medium'], ['Medium to high'], ['Box'], ['CNC, 3D printing, picking']],
+    [['SCARA', 'SCARA'], 'R-R-P-R', '4', ['High'], ['Low to medium'], ['Cylinder, flat'], ['Assembly from above']],
+    [['6-axis industrial'], '6 × R', '6', ['High'], ['5 to 1000+ kg'], ['Large sphere'], ['Welding, painting, handling']],
+    [['Cobot'], '6 × R', '6', ['Limited (safety)'], ['3 to 25 kg'], ['Sphere, 0.5 to 1.7 m'], ['Work next to people']],
+    [['Delta'], ['3 × R (parallel)'], '3 + 1', ['Very high'], ['0.1 to 8 kg'], ['Dome, small'], ['Conveyor pick and place']],
+    [['Mobile (differential)'], ['2 driven wheels'], ['3 (x, y, θ), 2 inputs'], ['Medium'], ['Depends on the base'], ['Unlimited floor'], ['Transport, cleaning']]
+  ];
+  const c = (x) => (Array.isArray(x) ? L(x[0], x[1]) : x);
+  $('cmpTable').innerHTML = `<tr>${H.map((h) => `<th>${L(...h)}</th>`).join('')}</tr>` + R.map((r) => `<tr>${r.map((x) => `<td>${c(x)}</td>`).join('')}</tr>`).join('');
+}
+
+// ------------------------------------------------------------------ the learning path (progress is saved in this browser)
+const PH = [
+  [['1 · Start here'], ['learn', 'maths']],
+  [['2 · Serial robots'], ['arm', 'gantry', 'scara', 'articulated', 'cobot']],
+  [['3 · Parallel robots'], ['delta']],
+  [['4 · Mobile robots'], ['mobile', 'wheels']],
+  [['5 · Go further'], ['model', 'sing', 'ctrl']],
+  [['6 · The whole field'], ['ai', 'world']]
+];
+$('phases').innerHTML = PH.map(([name, ids]) => `<div class="phase"><h3>${L(...name)}</h3><div class="steps">${ids.map((id) => { const n = P[id]; return `<article class="step" data-id="${id}"><label class="chk" title="${L('Mark as done')}"><input type="checkbox" data-id="${id}" aria-label="${L('Mark as done')}: ${L(...n.t)}" /><span class="box" aria-hidden="true"></span></label><div><a href="${n.href}"><b>${L(...n.t)}</b></a><span class="meta">${n.min} ${L('min')} · ${L(...LV[n.lv - 1])}</span></div></article>`; }).join('')}</div></div>`).join('');
+function paintPath() {
+  const pg = prog(); let done = 0, next = null;
+  ORDER.forEach((id) => { if (pg.get(id)) done++; else if (!next) next = id; });
+  document.querySelectorAll('#phases .step').forEach((el) => { const id = el.dataset.id, ok = pg.get(id); el.classList.toggle('done', ok); el.classList.toggle('next', id === next); el.querySelector('input').checked = ok; });
+  const pct = Math.round((done / ORDER.length) * 100);
+  $('prog').innerHTML = `<div class="pcount"><b>${done}</b><span> / ${ORDER.length} ${L('pages finished')}</span></div><div class="rm-bar"><i style="width:${pct}%"></i></div><div class="pact">${next ? `<a class="btn" href="${P[next].href}">${done ? L('Continue') : L('Start')}: ${L(...P[next].t)} ${arrow}</a>` : `<span class="win">${L('Everything is done. Well played!')}</span>`}${done ? `<button type="button" class="ghostb" id="pReset">${L('Reset')}</button>` : ''}</div>`;
+  const rs = $('pReset'); if (rs) rs.addEventListener('click', () => { if (confirm(L('Clear your progress?'))) prog().clear(ORDER); });
+  paintRobots();
+}
+$('phases').addEventListener('change', (e) => { const i = e.target.closest('input[data-id]'); if (i) prog().set(i.dataset.id, i.checked); });
+addEventListener('ra-progress', paintPath); paintPath();
+
+// ------------------------------------------------------------------ the club
+{
+  const c = window.RA_CLUB || { join: '#', links: [], ui: { join: 'Join the club' } };
+  const jb = $('joinBtn'); jb.href = c.join; jb.innerHTML = `${(window.RA_ICON || {}).join || ''}<span>${c.ui.join}</span>`;
+  $('clubLinks').innerHTML = c.links.map(([name, url, icon]) => `<a href="${url}"${url.indexOf('mailto:') === 0 ? '' : ' target="_blank" rel="noopener"'}>${icon}<span>${name}</span></a>`).join('');
+}
+
+// ------------------------------------------------------------------ hero: a live 6-axis robot (same engine as the robot pages)
+const STD = [
+  { th: ['q1', (q) => q[0]],           d: ['d1', 0.40], a: ['0', 0],      al: ['90', 90] },
+  { th: ['q2 + 90', (q) => q[1] + 90], d: ['0', 0],     a: ['a2', 0.45], al: ['0', 0] },
+  { th: ['q3 + 90', (q) => q[2] + 90], d: ['0', 0],     a: ['0', 0],      al: ['90', 90] },
+  { th: ['q4', (q) => q[3]],           d: ['d4', 0.45], a: ['0', 0],      al: ['−90', -90] },
+  { th: ['q5', (q) => q[4]],           d: ['0', 0],     a: ['0', 0],      al: ['90', 90] },
+  { th: ['q6', (q) => q[5]],           d: ['d6', 0.15], a: ['0', 0],      al: ['0', 0] }
+];
+// the 3D engine (the heaviest file) is fetched only once the page is already usable
+async function startHero() {
+const THREE = await import('three');
+const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+const viewer = $('viewer'), canvas = $('gl');
+let renderer = null;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: (devicePixelRatio || 1) < 1.5, alpha: true, powerPreference: 'high-performance' }); } catch (e) { viewer.classList.add('no3d'); }
+if (renderer) {
+  renderer.setClearColor(0x000000, 0); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(34, 1, 0.1, 60);
+  camera.position.set(2.7, 1.55, 3.0);
+  const orbit = new OrbitControls(camera, canvas);
+  orbit.target.set(0, 0.42, 0); orbit.enableZoom = false; orbit.enablePan = false; orbit.enableDamping = true; orbit.dampingFactor = 0.08;
+  orbit.minPolarAngle = 0.5; orbit.maxPolarAngle = 1.62; orbit.autoRotate = !reduce; orbit.autoRotateSpeed = 0.9;
+  canvas.style.touchAction = 'pan-y';                                           // a vertical swipe still scrolls the page
+  orbit.addEventListener('start', () => { orbit.autoRotate = false; });
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x3a3d8f, 1.15));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.1); sun.position.set(3, 5.5, 2.5); scene.add(sun);
+  const rim = new THREE.DirectionalLight(0x8b8dff, 1.1); rim.position.set(-4, 2.5, -3); scene.add(rim);
+  const grid = new THREE.GridHelper(5, 20, 0x5b5ec8, 0x2a2c78); grid.position.y = 0.001; grid.material.transparent = true; grid.material.opacity = 0.55; scene.add(grid);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.57, 96).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x3fd2ee, transparent: true, opacity: 0.8 })); ring.position.y = 0.003; scene.add(ring);
+  const arm = DHArm.build(THREE, STD, { link: '#e4e6ff', joint: '#ff9f43', cap: '#171850', lr: 0.058, baseR: 0.22,
+    sizes: [{ r: 0.125, l: 0.17 }, { r: 0.105, l: 0.15 }, { r: 0.09, l: 0.135 }, { r: 0.075, l: 0.12 }, { r: 0.068, l: 0.105 }, { r: 0.055, l: 0.06 }] });
+  scene.add(arm.root);
+  const sl = [$('q1'), $('q2'), $('q3')], out = [$('o1'), $('o2'), $('o3')], autoBtn = $('vauto');
+  let auto = !reduce, t0 = performance.now(); autoBtn.setAttribute('aria-pressed', String(auto));
+  const readQ = () => sl.map((s) => +s.value);
+  const showQ = (q) => q.slice(0, 3).forEach((v, i) => { out[i].textContent = Math.round(v) + '°'; });
+  sl.forEach((s) => s.addEventListener('input', () => { auto = false; autoBtn.setAttribute('aria-pressed', 'false'); showQ(readQ()); }));
+  autoBtn.addEventListener('click', () => { auto = !auto; autoBtn.setAttribute('aria-pressed', String(auto)); t0 = performance.now() - 0; if (!auto) { const q = lastQ; sl.forEach((s, i) => { s.value = Math.round(q[i]); }); } });
+  let lastQ = [30, -45, -60, 0, -40, 0], visible = true;
+  new IntersectionObserver((en) => { visible = en[0].isIntersecting; }, { threshold: 0.05 }).observe(viewer);
+  function size() { const w = viewer.clientWidth, h = viewer.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  new ResizeObserver(size).observe(viewer); size();
+  (function loop(now) {
+    requestAnimationFrame(loop);
+    if (!visible || document.hidden) return;
+    const t = (now - t0) / 1000;
+    let q;
+    if (auto) q = [60 * Math.sin(t * 0.45), -45 + 22 * Math.sin(t * 0.7 + 1), -60 + 28 * Math.sin(t * 0.9), 70 * Math.sin(t * 0.8), -45 + 28 * Math.sin(t * 1.1), 90 * Math.sin(t * 1.3)];
+    else { const r = readQ(); q = [r[0], r[1], r[2], 0, -40, 0]; }
+    lastQ = q; arm.setPose(q); if (auto) showQ(q);
+    orbit.update(); renderer.render(scene, camera);
+  })(performance.now());
+}
+}
+const viewer0 = document.getElementById('viewer');
+const kick = () => startHero().catch(() => viewer0.classList.add('no3d'));
+if (document.readyState === 'complete') setTimeout(kick, 50); else addEventListener('load', () => (window.requestIdleCallback ? requestIdleCallback(kick, { timeout: 1500 }) : setTimeout(kick, 200)));
+    </script>
+  </body>
+</html>
